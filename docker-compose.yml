@@ -1,0 +1,40 @@
+services:
+  mc:
+    image: itzg/minecraft-server
+    tty: true
+    stdin_open: true
+    ports:
+      - "25565:25565"
+    restart: always
+    environment:
+      EULA: "TRUE"
+      TYPE: AUTO_CURSEFORGE
+      VERSION: ${MC_VERSION:-1.20.1}
+      DIFFICULTY: hard
+      ALLOW_FLIGHT: "true"
+      MEMORY: ${MEMORY:-4G}
+      CF_API_KEY: ${CF_API_KEY:?https://docker-minecraft-server.readthedocs.io/en/latest/types-and-platforms/mod-platforms/auto-curseforge/}
+      CF_PAGE_URL: ${CF_PAGE_URL:?https://docker-minecraft-server.readthedocs.io/en/latest/types-and-platforms/mod-platforms/auto-curseforge/}
+      # Set the server to allow sleeping with 25% of players sleeping
+      RCON_CMDS_STARTUP: |-
+        gamerule playersSleepingPercentage 25
+    volumes:
+      - ./data:/data
+    labels:
+      # Set up a restart schedule for the server every 4 hours with warnings 15 minutes, 5 minutes, and 15 seconds before restart
+      ofelia.enabled: "true"
+      ofelia.job-exec.restart_warning_15.schedule: "40 */4 * * *"
+      ofelia.job-exec.restart_warning_15.command: 'rcon-cli say "Restarting in 15 minutes"'
+      ofelia.job-exec.restart_warning_5.schedule: "50 */4 * * *"
+      ofelia.job-exec.restart_warning_5.command: 'rcon-cli say "Restarting in 5 minutes"'
+      ofelia.job-exec.restart.schedule: "55 */4 * * *"
+      ofelia.job-exec.restart.command: 'rcon-cli say "§kaaa§r §cRESTARTING IN 15 SECONDS§r §kaaa§r" && sleep 15 && rcon-cli stop'
+
+  ofelia:
+    image: mcuadros/ofelia:latest
+    depends_on:
+      mc:
+        condition: service_healthy
+    command: daemon --docker
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
